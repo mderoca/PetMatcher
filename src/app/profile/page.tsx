@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Settings, LogOut, ChevronRight, Heart, Bell, Shield } from 'lucide-react';
+import { User, Settings, LogOut, ChevronRight, Heart, Bell } from 'lucide-react';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
@@ -54,12 +54,6 @@ export default function ProfilePage() {
       label: 'Notifications',
       href: '/profile/notifications',
       description: 'Configure notification settings',
-    },
-    {
-      icon: Shield,
-      label: 'Privacy',
-      href: '/profile/privacy',
-      description: 'Manage your privacy settings',
     },
     {
       icon: Settings,

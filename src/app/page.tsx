@@ -61,12 +61,6 @@ export default function HomePage() {
               Log In
             </Button>
           </Link>
-          <Link
-            href="/browse"
-            className="mt-2 text-sm text-gray-500 underline hover:text-gray-700"
-          >
-            Continue as Guest
-          </Link>
         </div>
       </section>
 
