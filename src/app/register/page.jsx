@@ -11,8 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase/client';
 
-type UserRole = 'adopter' | 'shelter';
-
 const baseSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email'),
@@ -73,20 +71,18 @@ const registerSchema = baseSchema
     { message: 'City is required', path: ['shelterCity'] }
   );
 
-type RegisterFormData = z.infer<typeof baseSchema>;
-
 export default function RegisterPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedRole, setSelectedRole] = useState<UserRole>('adopter');
+  const [error, setError] = useState(null);
+  const [selectedRole, setSelectedRole] = useState('adopter');
 
   const {
     register,
     handleSubmit,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterFormData>({
+  } = useForm({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       role: 'adopter',
@@ -94,12 +90,12 @@ export default function RegisterPage() {
     },
   });
 
-  const handleRoleChange = (role: UserRole) => {
+  const handleRoleChange = (role) => {
     setSelectedRole(role);
     setValue('role', role);
   };
 
-  const onSubmit = async (data: RegisterFormData) => {
+  const onSubmit = async (data) => {
     setError(null);
     const supabase = createClient();
 
@@ -125,11 +121,11 @@ export default function RegisterPage() {
     if (data.role === 'shelter' && authData.user) {
       const { error: shelterError } = await supabase.rpc('create_shelter_for_user', {
         p_user_id: authData.user.id,
-        p_name: data.shelterName!,
+        p_name: data.shelterName,
         p_email: data.email,
-        p_phone: data.shelterPhone!,
-        p_address: data.shelterAddress!,
-        p_city: data.shelterCity!,
+        p_phone: data.shelterPhone,
+        p_address: data.shelterAddress,
+        p_city: data.shelterCity,
         p_province: data.shelterProvince || 'BC',
       });
 

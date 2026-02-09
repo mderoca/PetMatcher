@@ -6,11 +6,10 @@ import Image from 'next/image';
 import { Heart, Trash2, MapPin } from 'lucide-react';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { Button } from '@/components/ui/button';
-import { Pet } from '@/types/database';
 import { formatAge, capitalize } from '@/lib/utils';
 
 // Demo favorites (replace with real data from Supabase)
-const demoFavorites: Pet[] = [
+const demoFavorites = [
   {
     id: '1',
     shelter_id: 's1',
@@ -50,9 +49,9 @@ const demoFavorites: Pet[] = [
 ];
 
 export default function FavoritesPage() {
-  const [favorites, setFavorites] = useState<Pet[]>(demoFavorites);
+  const [favorites, setFavorites] = useState(demoFavorites);
 
-  const handleRemove = (petId: string) => {
+  const handleRemove = (petId) => {
     setFavorites((prev) => prev.filter((p) => p.id !== petId));
     // TODO: Remove from Supabase
   };
