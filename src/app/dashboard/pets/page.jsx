@@ -5,12 +5,11 @@ import Link from 'next/link';
 import { ArrowLeft, Plus, PawPrint, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
-import { Pet } from '@/types/database';
 
 export default function ManagePetsPage() {
-  const [pets, setPets] = useState<Pet[]>([]);
+  const [pets, setPets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     loadPets();
@@ -40,7 +39,7 @@ export default function ManagePetsPage() {
     setIsLoading(false);
   }
 
-  async function handleDelete(petId: string) {
+  async function handleDelete(petId) {
     if (!confirm('Are you sure you want to delete this pet?')) return;
 
     setDeletingId(petId);

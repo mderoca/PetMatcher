@@ -22,23 +22,10 @@ const shelterProfileSchema = z.object({
   about: z.string().optional(),
 });
 
-type ShelterProfileData = z.infer<typeof shelterProfileSchema>;
-
-interface Shelter {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  province: string;
-  website_url: string | null;
-}
-
 export default function ShelterProfilePage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [shelter, setShelter] = useState<Shelter | null>(null);
+  const [shelter, setShelter] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [contactName, setContactName] = useState('');
 
@@ -47,7 +34,7 @@ export default function ShelterProfilePage() {
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<ShelterProfileData>({
+  } = useForm({
     resolver: zodResolver(shelterProfileSchema),
   });
 
@@ -95,7 +82,7 @@ export default function ShelterProfilePage() {
     loadProfile();
   }, [reset]);
 
-  const onSubmit = async (data: ShelterProfileData) => {
+  const onSubmit = async (data) => {
     if (!shelter) return;
 
     setSaveSuccess(false);

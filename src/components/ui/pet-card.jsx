@@ -2,17 +2,9 @@
 
 import Image from 'next/image';
 import { Heart, MapPin, Info } from 'lucide-react';
-import { Pet } from '@/types/database';
 import { formatAge, capitalize, cn } from '@/lib/utils';
 
-interface PetCardProps {
-  pet: Pet;
-  matchReasons?: string[];
-  onClick?: () => void;
-  className?: string;
-}
-
-export function PetCard({ pet, matchReasons = [], onClick, className }: PetCardProps) {
+export function PetCard({ pet, matchReasons = [], onClick, className }) {
   return (
     <div
       className={cn(
