@@ -4,25 +4,18 @@ import { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
-interface ImageUploadProps {
-  onUpload: (urls: string[]) => void;
-  existingImages?: string[];
-  maxImages?: number;
-  folder?: string;
-}
-
 export function ImageUpload({
   onUpload,
   existingImages = [],
   maxImages = 5,
   folder = 'pets',
-}: ImageUploadProps) {
-  const [images, setImages] = useState<string[]>(existingImages);
+}) {
+  const [images, setImages] = useState(existingImages);
   const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState(null);
+  const fileInputRef = useRef(null);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -37,7 +30,7 @@ export function ImageUpload({
     setError(null);
 
     const supabase = createClient();
-    const uploadedUrls: string[] = [];
+    const uploadedUrls = [];
 
     for (const file of filesToUpload) {
       // Validate file type
@@ -89,7 +82,7 @@ export function ImageUpload({
     }
   };
 
-  const handleRemove = (index: number) => {
+  const handleRemove = (index) => {
     const newImages = images.filter((_, i) => i !== index);
     setImages(newImages);
     onUpload(newImages);

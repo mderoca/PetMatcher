@@ -1,13 +1,13 @@
-import { clsx, type ClassValue } from 'clsx';
+import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 // Utility function for merging Tailwind CSS classes
-export function cn(...inputs: ClassValue[]) {
+export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
 // Format pet age for display
-export function formatAge(years: number): string {
+export function formatAge(years) {
   if (years < 1) {
     const months = Math.round(years * 12);
     return `${months} month${months !== 1 ? 's' : ''}`;
@@ -16,25 +16,12 @@ export function formatAge(years: number): string {
 }
 
 // Capitalize first letter
-export function capitalize(str: string): string {
+export function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 // Calculate match score based on user preferences and pet attributes
-export function calculateMatchScore(
-  pet: {
-    energy_level: string;
-    good_with_kids: boolean;
-    good_with_pets: boolean;
-    species: string;
-  },
-  preferences: {
-    activity_level: string;
-    has_children: boolean;
-    has_other_pets: boolean;
-    preferred_pet_types: string[];
-  }
-): number {
+export function calculateMatchScore(pet, preferences) {
   let score = 0;
   const maxScore = 100;
 
@@ -76,19 +63,8 @@ export function calculateMatchScore(
 }
 
 // Get match reasons for "Why this match?" feature
-export function getMatchReasons(
-  pet: {
-    energy_level: string;
-    good_with_kids: boolean;
-    good_with_pets: boolean;
-  },
-  preferences: {
-    activity_level: string;
-    has_children: boolean;
-    has_other_pets: boolean;
-  }
-): string[] {
-  const reasons: string[] = [];
+export function getMatchReasons(pet, preferences) {
+  const reasons = [];
 
   if (pet.energy_level === preferences.activity_level) {
     reasons.push(`${capitalize(pet.energy_level)} energy`);
