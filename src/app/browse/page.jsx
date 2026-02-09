@@ -6,23 +6,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, RotateCcw, Info, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BottomNav } from '@/components/layout/bottom-nav';
-import { Pet } from '@/types/database';
 import { formatAge, capitalize, getMatchReasons } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 
 // Demo user preferences (replace with real data)
 const userPreferences = {
-  activity_level: 'medium' as const,
+  activity_level: 'medium',
   has_children: true,
   has_other_pets: false,
-  preferred_pet_types: ['dog', 'cat'] as const,
+  preferred_pet_types: ['dog', 'cat'],
 };
 
 export default function BrowsePage() {
   const router = useRouter();
-  const [pets, setPets] = useState<Pet[]>([]);
+  const [pets, setPets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Fetch pets from Supabase
@@ -47,14 +46,14 @@ export default function BrowsePage() {
 
     fetchPets();
   }, []);
-  const [lastSwipedPet, setLastSwipedPet] = useState<Pet | null>(null);
+  const [lastSwipedPet, setLastSwipedPet] = useState(null);
   const [likedCount, setLikedCount] = useState(0);
   const [passedCount, setPassedCount] = useState(0);
 
   const currentPet = pets[currentIndex];
 
   const handleSwipe = useCallback(
-    (direction: 'left' | 'right') => {
+    (direction) => {
       if (!currentPet) return;
 
       if (direction === 'right') {

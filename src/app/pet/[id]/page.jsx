@@ -17,11 +17,10 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Pet, Shelter } from '@/types/database';
 import { formatAge, capitalize } from '@/lib/utils';
 
 // Demo pet data (replace with real data from Supabase)
-const demoPets: Record<string, Pet & { shelter: Shelter }> = {
+const demoPets = {
   '1': {
     id: '1',
     shelter_id: 's1',
@@ -120,11 +119,7 @@ const demoPets: Record<string, Pet & { shelter: Shelter }> = {
   },
 };
 
-interface PetDetailPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default function PetDetailPage({ params }: PetDetailPageProps) {
+export default function PetDetailPage({ params }) {
   const { id } = use(params);
   const router = useRouter();
   const pet = demoPets[id];

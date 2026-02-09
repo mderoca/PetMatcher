@@ -27,19 +27,17 @@ const petSchema = z.object({
   province: z.string().min(1, 'Province is required'),
 });
 
-type PetFormData = z.infer<typeof petSchema>;
-
 export default function AddPetPage() {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [shelterId, setShelterId] = useState<string | null>(null);
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [error, setError] = useState(null);
+  const [shelterId, setShelterId] = useState(null);
+  const [photos, setPhotos] = useState([]);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<PetFormData>({
+  } = useForm({
     resolver: zodResolver(petSchema),
     defaultValues: {
       species: 'dog',
@@ -71,7 +69,7 @@ export default function AddPetPage() {
     getShelter();
   }, []);
 
-  const onSubmit = async (data: PetFormData) => {
+  const onSubmit = async (data) => {
     if (!shelterId) {
       setError('Shelter not found');
       return;

@@ -5,23 +5,11 @@ import Link from 'next/link';
 import { PawPrint, MessageSquare, Plus, TrendingUp, Building2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
-import { Pet } from '@/types/database';
-
-interface DashboardStats {
-  totalPets: number;
-  totalInquiries: number;
-  pendingInquiries: number;
-}
-
-interface Shelter {
-  id: string;
-  name: string;
-}
 
 export default function DashboardPage() {
-  const [shelter, setShelter] = useState<Shelter | null>(null);
-  const [stats, setStats] = useState<DashboardStats>({ totalPets: 0, totalInquiries: 0, pendingInquiries: 0 });
-  const [recentPets, setRecentPets] = useState<Pet[]>([]);
+  const [shelter, setShelter] = useState(null);
+  const [stats, setStats] = useState({ totalPets: 0, totalInquiries: 0, pendingInquiries: 0 });
+  const [recentPets, setRecentPets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

@@ -6,26 +6,10 @@ import { ArrowLeft, MessageSquare, Clock, CheckCircle, Mail } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 
-interface InquiryWithDetails {
-  id: string;
-  message: string | null;
-  status: 'pending' | 'read' | 'responded';
-  created_at: string;
-  user: {
-    name: string;
-    email: string;
-  };
-  pet: {
-    name: string;
-    breed: string;
-    photos: string[];
-  };
-}
-
 export default function InquiriesPage() {
-  const [inquiries, setInquiries] = useState<InquiryWithDetails[]>([]);
+  const [inquiries, setInquiries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'read' | 'responded'>('all');
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     loadInquiries();
@@ -58,8 +42,8 @@ export default function InquiriesPage() {
       .eq('shelter_id', shelter.id)
       .order('created_at', { ascending: false });
 
-    // Transform the data to match our interface
-    const transformed = (data || []).map((item: any) => ({
+    // Transform the data to match our structure
+    const transformed = (data || []).map((item) => ({
       id: item.id,
       message: item.message,
       status: item.status,
@@ -72,7 +56,7 @@ export default function InquiriesPage() {
     setIsLoading(false);
   }
 
-  async function updateStatus(inquiryId: string, newStatus: 'read' | 'responded') {
+  async function updateStatus(inquiryId, newStatus) {
     const supabase = createClient();
 
     const { error } = await supabase
@@ -118,7 +102,7 @@ export default function InquiriesPage() {
       <div className="p-6">
         {/* Filters */}
         <div className="flex gap-2 mb-6">
-          {(['all', 'pending', 'read', 'responded'] as const).map((status) => (
+          {['all', 'pending', 'read', 'responded'].map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}

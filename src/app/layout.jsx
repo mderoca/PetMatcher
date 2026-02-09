@@ -1,4 +1,3 @@
-import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { QueryProvider } from '@/components/providers/query-provider';
 import './globals.css';
@@ -8,7 +7,7 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
-export const metadata: Metadata = {
+export const metadata = {
   title: {
     default: 'PetMatcher - Find Your Perfect Pet',
     template: '%s | PetMatcher',
@@ -25,7 +24,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
+export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -33,11 +32,7 @@ export const viewport: Viewport = {
   themeColor: '#f97316',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${inter.variable} font-sans antialiased`}>

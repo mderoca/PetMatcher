@@ -1,21 +1,14 @@
 'use client';
 
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { useState } from 'react';
-
-interface SwipeCardProps {
-  children: React.ReactNode;
-  onSwipeLeft?: () => void;
-  onSwipeRight?: () => void;
-  className?: string;
-}
 
 export function SwipeCard({
   children,
   onSwipeLeft,
   onSwipeRight,
   className = '',
-}: SwipeCardProps) {
+}) {
   const [exitX, setExitX] = useState(0);
 
   const x = useMotionValue(0);
@@ -26,7 +19,7 @@ export function SwipeCard({
   const likeOpacity = useTransform(x, [0, 100], [0, 1]);
   const passOpacity = useTransform(x, [-100, 0], [1, 0]);
 
-  const handleDragEnd = (_: unknown, info: PanInfo) => {
+  const handleDragEnd = (_, info) => {
     const threshold = 100;
 
     if (info.offset.x > threshold) {
