@@ -232,3 +232,21 @@ CREATE POLICY "Users can delete their own uploads"
   ON storage.objects FOR DELETE
   TO authenticated
   USING (bucket_id = 'pet-photos' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ============================================
+-- RPC: Aggregated like counts per pet
+-- ============================================
+-- Returns the number of 'like' interactions each pet has received.
+-- SECURITY DEFINER so any user can see popularity data without
+-- seeing other users' individual interactions (bypasses RLS).
+CREATE OR REPLACE FUNCTION public.get_pet_like_counts()
+RETURNS TABLE(pet_id UUID, like_count BIGINT)
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT pet_id, COUNT(*) AS like_count
+  FROM interactions
+  WHERE type = 'like'
+  GROUP BY pet_id;
+$$;

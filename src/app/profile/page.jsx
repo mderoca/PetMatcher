@@ -11,6 +11,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ viewed: 0, favorites: 0, inquiries: 0 });
 
   useEffect(() => {
     const getUser = async () => {
@@ -21,6 +22,29 @@ export default function ProfilePage() {
         setUser({
           email: authUser.email || '',
           name: authUser.user_metadata?.name || 'Pet Lover',
+        });
+
+        // Fetch real stats in parallel
+        const [viewedRes, favoritesRes, inquiriesRes] = await Promise.all([
+          supabase
+            .from('interactions')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', authUser.id),
+          supabase
+            .from('interactions')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', authUser.id)
+            .in('type', ['like', 'favourite']),
+          supabase
+            .from('inquiries')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', authUser.id),
+        ]);
+
+        setStats({
+          viewed: viewedRes.count || 0,
+          favorites: favoritesRes.count || 0,
+          inquiries: inquiriesRes.count || 0,
         });
       }
       setLoading(false);
@@ -93,15 +117,15 @@ export default function ProfilePage() {
       {/* Stats */}
       <div className="-mt-4 mx-4 grid grid-cols-3 gap-3 rounded-xl bg-white p-4 shadow-md">
         <div className="text-center">
-          <p className="text-2xl font-bold text-orange-500">24</p>
+          <p className="text-2xl font-bold text-orange-500">{stats.viewed}</p>
           <p className="text-xs text-gray-500">Pets Viewed</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-green-500">8</p>
+          <p className="text-2xl font-bold text-green-500">{stats.favorites}</p>
           <p className="text-xs text-gray-500">Favorites</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-blue-500">2</p>
+          <p className="text-2xl font-bold text-blue-500">{stats.inquiries}</p>
           <p className="text-xs text-gray-500">Inquiries</p>
         </div>
       </div>
