@@ -21,10 +21,9 @@ export default function BrowsePage() {
   const [userId, setUserId] = useState(null);
   const [userPreferences, setUserPreferences] = useState(null);
   const [userInteractions, setUserInteractions] = useState([]);
-  const [likeCounts, setLikeCounts] = useState(null);
   const allPetsRef = useRef([]);
 
-  // Fetch pets, preferences, interactions, and popularity from Supabase
+  // Fetch pets, preferences, and interactions from Supabase
   useEffect(() => {
     async function fetchData() {
       const supabase = createClient();
@@ -39,7 +38,7 @@ export default function BrowsePage() {
       setUserId(authUser.id);
 
       // 2. Fetch profile preferences, past interactions, all pets, and popularity in parallel
-      const [profileRes, interactionsRes, petsRes, popularityRes] = await Promise.all([
+      const [profileRes, interactionsRes, petsRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('activity_level, has_children, has_other_pets, preferred_pet_types')
@@ -53,7 +52,6 @@ export default function BrowsePage() {
           .from('pets')
           .select('*')
           .order('created_at', { ascending: false }),
-        supabase.rpc('get_pet_like_counts'),
       ]);
 
       if (petsRes.error) {
@@ -76,15 +74,6 @@ export default function BrowsePage() {
       const interactions = interactionsRes.data || [];
       setUserInteractions(interactions);
 
-      // Build like-counts map { pet_id: count }
-      const countsMap = {};
-      if (popularityRes.data) {
-        for (const row of popularityRes.data) {
-          countsMap[row.pet_id] = Number(row.like_count);
-        }
-      }
-      setLikeCounts(countsMap);
-
       // Store all pets for behavioral scoring
       const allPets = petsRes.data || [];
       allPetsRef.current = allPets;
@@ -94,7 +83,7 @@ export default function BrowsePage() {
       const unseenPets = allPets.filter((p) => !seenIds.has(p.id));
 
       // Score and sort
-      const sorted = scoreAndSortPets(unseenPets, prefs, interactions, allPets, countsMap);
+      const sorted = scoreAndSortPets(unseenPets, prefs, interactions, allPets);
       setPets(sorted);
       setIsLoading(false);
     }
@@ -173,20 +162,19 @@ export default function BrowsePage() {
         allPetsRef.current,
         userPreferences,
         userInteractions,
-        allPetsRef.current,
-        likeCounts
+        allPetsRef.current
       );
       setPets(sorted);
       setCurrentIndex(0);
     }
-  }, [userPreferences, userInteractions, likeCounts]);
+  }, [userPreferences, userInteractions]);
 
   const matchReasons = currentPet && userPreferences
-    ? getMatchReasons(currentPet, userPreferences, userInteractions, likeCounts)
+    ? getMatchReasons(currentPet, userPreferences, userInteractions)
     : [];
 
   const matchPercent = currentPet
-    ? Math.round((currentPet._score / 150) * 100)
+    ? Math.round((currentPet._score / 130) * 100)
     : 0;
 
   return (

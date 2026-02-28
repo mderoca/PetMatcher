@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -15,114 +15,45 @@ import {
   Mail,
   Phone,
   ExternalLink,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatAge, capitalize } from '@/lib/utils';
-
-// Demo pet data (replace with real data from Supabase)
-const demoPets = {
-  '1': {
-    id: '1',
-    shelter_id: 's1',
-    name: 'Buddy',
-    species: 'dog',
-    breed: 'Golden Retriever',
-    age_years: 2,
-    size: 'large',
-    sex: 'male',
-    energy_level: 'high',
-    good_with_kids: true,
-    good_with_pets: true,
-    description:
-      'Meet Buddy! This friendly and playful Golden Retriever is looking for an active family to call his own. Buddy loves playing fetch, going on long walks, and cuddling on the couch after a fun day. He is well-trained and knows basic commands. Buddy would thrive in a home with a yard where he can run and play.',
-    city: 'Vancouver',
-    province: 'BC',
-    photos: [
-      'https://images.unsplash.com/photo-1552053831-71594a27632d?w=800&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1561037404-61cd46aa615b?w=800&h=600&fit=crop',
-    ],
-    updated_at: new Date().toISOString(),
-    shelter: {
-      id: 's1',
-      owner_user_id: 'u1',
-      name: 'Vancouver Animal Rescue',
-      email: 'adopt@vanrescue.ca',
-      phone: '(604) 555-0123',
-      address: '123 Main Street',
-      city: 'Vancouver',
-      province: 'BC',
-      website_url: 'https://vanrescue.ca',
-    },
-  },
-  '2': {
-    id: '2',
-    shelter_id: 's1',
-    name: 'Luna',
-    species: 'cat',
-    breed: 'Domestic Shorthair',
-    age_years: 1,
-    size: 'small',
-    sex: 'female',
-    energy_level: 'medium',
-    good_with_kids: true,
-    good_with_pets: false,
-    description:
-      'Luna is a sweet and affectionate cat who loves sunny windowsills and gentle pets. She would do best as the only pet in the home where she can be the center of attention.',
-    city: 'Surrey',
-    province: 'BC',
-    photos: [
-      'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800&h=600&fit=crop',
-    ],
-    updated_at: new Date().toISOString(),
-    shelter: {
-      id: 's1',
-      owner_user_id: 'u1',
-      name: 'Vancouver Animal Rescue',
-      email: 'adopt@vanrescue.ca',
-      phone: '(604) 555-0123',
-      address: '123 Main Street',
-      city: 'Vancouver',
-      province: 'BC',
-      website_url: 'https://vanrescue.ca',
-    },
-  },
-  '3': {
-    id: '3',
-    shelter_id: 's2',
-    name: 'Max',
-    species: 'dog',
-    breed: 'Labrador Mix',
-    age_years: 3,
-    size: 'medium',
-    sex: 'male',
-    energy_level: 'medium',
-    good_with_kids: true,
-    good_with_pets: true,
-    description:
-      'Max is a calm and well-trained lab mix who gets along with everyone. He is perfect for families or first-time dog owners.',
-    city: 'Burnaby',
-    province: 'BC',
-    photos: [
-      'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&h=600&fit=crop',
-    ],
-    updated_at: new Date().toISOString(),
-    shelter: {
-      id: 's2',
-      owner_user_id: 'u2',
-      name: 'Burnaby SPCA',
-      email: 'info@burnabypca.ca',
-      phone: '(604) 555-0456',
-      address: '456 Oak Avenue',
-      city: 'Burnaby',
-      province: 'BC',
-    },
-  },
-};
+import { createClient } from '@/lib/supabase/client';
 
 export default function PetDetailPage({ params }) {
   const { id } = use(params);
   const router = useRouter();
-  const pet = demoPets[id];
+  const [pet, setPet] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activePhoto, setActivePhoto] = useState(0);
+
+  useEffect(() => {
+    async function loadPet() {
+      const supabase = createClient();
+
+      const { data, error } = await supabase
+        .from('pets')
+        .select('*, shelter:shelters(*)')
+        .eq('id', id)
+        .single();
+
+      if (!error && data) {
+        setPet(data);
+      }
+      setIsLoading(false);
+    }
+
+    loadPet();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <main className="flex min-h-dvh items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+      </main>
+    );
+  }
 
   if (!pet) {
     return (
@@ -135,42 +66,68 @@ export default function PetDetailPage({ params }) {
     );
   }
 
-  const handleInquire = () => {
-    // TODO: Open inquiry form or send to Supabase
-    window.location.href = `mailto:${pet.shelter.email}?subject=Adoption Inquiry for ${pet.name}&body=Hi, I am interested in adopting ${pet.name}. Please let me know the next steps.`;
-  };
+  const photos = pet.photos?.length > 0 ? pet.photos : ['/placeholder.png'];
 
   return (
-    <main className="min-h-dvh pb-24">
-      {/* Image Gallery */}
-      <div className="relative">
-        <div className="relative aspect-[4/3] w-full">
-          <Image
-            src={pet.photos[0]}
-            alt={pet.name}
-            fill
-            className="object-cover"
-            priority
-            sizes="100vw"
-          />
-        </div>
-
-        {/* Back button */}
+    <main className="min-h-dvh pb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
         <button
           onClick={() => router.back()}
-          className="absolute left-4 top-4 rounded-full bg-white/80 p-2 backdrop-blur-sm transition hover:bg-white"
+          className="rounded-full p-2 text-gray-600 hover:bg-gray-100 transition"
           aria-label="Go back"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-
-        {/* Favorite button */}
+        <h2 className="font-semibold text-gray-900">{pet.name}</h2>
         <button
-          className="absolute right-4 top-4 rounded-full bg-white/80 p-2 backdrop-blur-sm transition hover:bg-white"
+          className="rounded-full p-2 text-gray-600 hover:bg-gray-100 transition"
           aria-label="Add to favorites"
         >
           <Heart className="h-5 w-5" />
         </button>
+      </div>
+
+      {/* Photo Gallery */}
+      <div className="px-4 pt-4">
+        {/* Main photo */}
+        <div className="relative aspect-square w-full max-w-md mx-auto overflow-hidden rounded-2xl bg-gray-100">
+          <Image
+            src={photos[activePhoto]}
+            alt={`${pet.name} photo ${activePhoto + 1}`}
+            fill
+            className="object-cover"
+            priority
+            sizes="(max-width: 448px) 100vw, 448px"
+            unoptimized
+          />
+        </div>
+
+        {/* Thumbnails (only if multiple photos) */}
+        {photos.length > 1 && (
+          <div className="flex justify-center gap-2 mt-3">
+            {photos.map((photo, i) => (
+              <button
+                key={i}
+                onClick={() => setActivePhoto(i)}
+                className={`relative h-14 w-14 overflow-hidden rounded-lg border-2 transition ${
+                  i === activePhoto
+                    ? 'border-orange-500'
+                    : 'border-transparent opacity-60 hover:opacity-100'
+                }`}
+              >
+                <Image
+                  src={photo}
+                  alt={`${pet.name} thumbnail ${i + 1}`}
+                  fill
+                  className="object-cover"
+                  sizes="56px"
+                  unoptimized
+                />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Pet Info */}
@@ -259,49 +216,46 @@ export default function PetDetailPage({ params }) {
         </div>
 
         {/* Shelter Info */}
-        <div className="rounded-xl bg-gray-50 p-4">
-          <h2 className="mb-3 font-semibold text-gray-900">Shelter Information</h2>
-          <p className="mb-2 font-medium">{pet.shelter.name}</p>
-          <p className="mb-1 text-sm text-gray-600">
-            {pet.shelter.address}, {pet.shelter.city}, {pet.shelter.province}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <a
-              href={`mailto:${pet.shelter.email}`}
-              className="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm text-gray-700 shadow-sm"
-            >
-              <Mail className="h-4 w-4" />
-              Email
-            </a>
-            <a
-              href={`tel:${pet.shelter.phone}`}
-              className="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm text-gray-700 shadow-sm"
-            >
-              <Phone className="h-4 w-4" />
-              Call
-            </a>
-            {pet.shelter.website_url && (
+        {pet.shelter && (
+          <div className="rounded-xl bg-gray-50 p-4">
+            <h2 className="mb-3 font-semibold text-gray-900">Shelter Information</h2>
+            <p className="mb-2 font-medium">{pet.shelter.name}</p>
+            <p className="mb-1 text-sm text-gray-600">
+              {pet.shelter.address}, {pet.shelter.city}, {pet.shelter.province}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
               <a
-                href={pet.shelter.website_url}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={`mailto:${pet.shelter.email}`}
                 className="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm text-gray-700 shadow-sm"
               >
-                <ExternalLink className="h-4 w-4" />
-                Website
+                <Mail className="h-4 w-4" />
+                Email
               </a>
-            )}
+              {pet.shelter.phone && (
+                <a
+                  href={`tel:${pet.shelter.phone}`}
+                  className="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm text-gray-700 shadow-sm"
+                >
+                  <Phone className="h-4 w-4" />
+                  Call
+                </a>
+              )}
+              {pet.shelter.website_url && (
+                <a
+                  href={pet.shelter.website_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm text-gray-700 shadow-sm"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Website
+                </a>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Fixed Bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-4 pb-safe">
-        <Button onClick={handleInquire} className="w-full" size="lg">
-          <Mail className="mr-2 h-5 w-5" />
-          Inquire About {pet.name}
-        </Button>
-      </div>
     </main>
   );
 }

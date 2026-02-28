@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PawPrint, MessageSquare, Plus, TrendingUp, Building2, User } from 'lucide-react';
+import { PawPrint, Plus, Building2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 
 export default function DashboardPage() {
   const [shelter, setShelter] = useState(null);
-  const [stats, setStats] = useState({ totalPets: 0, totalInquiries: 0, pendingInquiries: 0 });
+  const [stats, setStats] = useState({ totalPets: 0 });
   const [recentPets, setRecentPets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -40,21 +40,8 @@ export default function DashboardPage() {
         .select('*', { count: 'exact', head: true })
         .eq('shelter_id', shelterData.id);
 
-      const { count: inquiryCount } = await supabase
-        .from('inquiries')
-        .select('*', { count: 'exact', head: true })
-        .eq('shelter_id', shelterData.id);
-
-      const { count: pendingCount } = await supabase
-        .from('inquiries')
-        .select('*', { count: 'exact', head: true })
-        .eq('shelter_id', shelterData.id)
-        .eq('status', 'pending');
-
       setStats({
         totalPets: petCount || 0,
-        totalInquiries: inquiryCount || 0,
-        pendingInquiries: pendingCount || 0,
       });
 
       // Get recent pets
@@ -129,63 +116,27 @@ export default function DashboardPage() {
       </header>
 
       <div className="p-6 space-y-6">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-orange-100 p-3">
-                <PawPrint className="h-6 w-6 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Pets</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalPets}</p>
-              </div>
+        {/* Stats */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-4">
+            <div className="rounded-full bg-orange-100 p-3">
+              <PawPrint className="h-6 w-6 text-orange-600" />
             </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-blue-100 p-3">
-                <MessageSquare className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Inquiries</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalInquiries}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-green-100 p-3">
-                <TrendingUp className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Pending Inquiries</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.pendingInquiries}</p>
-              </div>
+            <div>
+              <p className="text-sm text-gray-600">Total Pets</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalPets}</p>
             </div>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4">
-          <Link href="/dashboard/pets" className="block">
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:border-orange-200 transition">
-              <PawPrint className="h-8 w-8 text-orange-500 mb-3" />
-              <h3 className="font-semibold text-gray-900">Manage Pets</h3>
-              <p className="text-sm text-gray-600 mt-1">View and edit your pet listings</p>
-            </div>
-          </Link>
-
-          <Link href="/dashboard/inquiries" className="block">
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:border-blue-200 transition">
-              <MessageSquare className="h-8 w-8 text-blue-500 mb-3" />
-              <h3 className="font-semibold text-gray-900">View Inquiries</h3>
-              <p className="text-sm text-gray-600 mt-1">Respond to adoption requests</p>
-            </div>
-          </Link>
-        </div>
+        {/* Quick Action */}
+        <Link href="/dashboard/pets" className="block">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:border-orange-200 transition">
+            <PawPrint className="h-8 w-8 text-orange-500 mb-3" />
+            <h3 className="font-semibold text-gray-900">Manage Pets</h3>
+            <p className="text-sm text-gray-600 mt-1">View and edit your pet listings</p>
+          </div>
+        </Link>
 
         {/* Recent Pets */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
@@ -216,7 +167,7 @@ export default function DashboardPage() {
                     <p className="font-medium text-gray-900">{pet.name}</p>
                     <p className="text-sm text-gray-600">{pet.breed} · {pet.species}</p>
                   </div>
-                  <Link href={`/dashboard/pets/${pet.id}`}>
+                  <Link href={`/dashboard/pets/${pet.id}/edit`}>
                     <Button variant="outline" size="sm">Edit</Button>
                   </Link>
                 </div>
