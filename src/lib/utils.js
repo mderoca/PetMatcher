@@ -63,7 +63,7 @@ export function calculateMatchScore(pet, preferences) {
 }
 
 // Get match reasons for "Why this match?" feature
-export function getMatchReasons(pet, preferences, userInteractions, likeCounts) {
+export function getMatchReasons(pet, preferences, userInteractions) {
   const reasons = [];
 
   if (pet.energy_level === preferences.activity_level) {
@@ -81,16 +81,6 @@ export function getMatchReasons(pet, preferences, userInteractions, likeCounts) 
   // Behavioral tag — only if enough data
   if (userInteractions && userInteractions.length >= 5 && pet._behavioralBonus > 10) {
     reasons.push('Matches your taste');
-  }
-
-  // Recency tag
-  if (pet._recencyBoost > 5) {
-    reasons.push('New arrival');
-  }
-
-  // Popularity tag
-  if (likeCounts && pet._popularityBoost > 5) {
-    reasons.push('Popular pick');
   }
 
   return reasons;
@@ -134,43 +124,17 @@ export function calculateBehavioralBonus(pet, userInteractions, allPets) {
   return Math.min(30, Math.round(bonus * 10) / 10);
 }
 
-// Calculate recency boost (0-10): pets listed within 7 days get a linearly decaying bonus
-export function calculateRecencyBoost(pet) {
-  const now = Date.now();
-  const created = new Date(pet.created_at).getTime();
-  const ageMs = now - created;
-  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-
-  if (ageMs >= sevenDaysMs) return 0;
-  return Math.round(((sevenDaysMs - ageMs) / sevenDaysMs) * 10 * 10) / 10;
-}
-
-// Calculate popularity boost (0-10): normalized by most-liked pet
-export function calculatePopularityBoost(petId, likeCounts, maxLikes) {
-  if (!likeCounts || maxLikes === 0) return 0;
-  const count = likeCounts[petId] || 0;
-  return Math.round((count / maxLikes) * 10 * 10) / 10;
-}
-
 // Combine all scoring signals, attach _score metadata, sort descending
-export function scoreAndSortPets(pets, preferences, userInteractions, allPets, likeCounts) {
-  const maxLikes = likeCounts
-    ? Math.max(0, ...Object.values(likeCounts))
-    : 0;
-
+export function scoreAndSortPets(pets, preferences, userInteractions, allPets) {
   const scored = pets.map((pet) => {
     const baseScore = calculateMatchScore(pet, preferences);
     const behavioralBonus = calculateBehavioralBonus(pet, userInteractions, allPets);
-    const recencyBoost = calculateRecencyBoost(pet);
-    const popularityBoost = calculatePopularityBoost(pet.id, likeCounts, maxLikes);
 
     return {
       ...pet,
-      _score: baseScore + behavioralBonus + recencyBoost + popularityBoost,
+      _score: baseScore + behavioralBonus,
       _baseScore: baseScore,
       _behavioralBonus: behavioralBonus,
-      _recencyBoost: recencyBoost,
-      _popularityBoost: popularityBoost,
     };
   });
 

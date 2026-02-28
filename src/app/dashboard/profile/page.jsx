@@ -102,6 +102,7 @@ export default function ShelterProfilePage() {
       .eq('id', shelter.id);
 
     if (!error) {
+      setShelter({ ...shelter, ...data, website_url: data.website_url || null });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     }
