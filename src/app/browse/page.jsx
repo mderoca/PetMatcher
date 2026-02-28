@@ -1,21 +1,13 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, RotateCcw, Info, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BottomNav } from '@/components/layout/bottom-nav';
-import { formatAge, capitalize, getMatchReasons } from '@/lib/utils';
+import { formatAge, capitalize, getMatchReasons, scoreAndSortPets } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
-
-// Demo user preferences (replace with real data)
-const userPreferences = {
-  activity_level: 'medium',
-  has_children: true,
-  has_other_pets: false,
-  preferred_pet_types: ['dog', 'cat'],
-};
 
 export default function BrowsePage() {
   const router = useRouter();
@@ -23,62 +15,150 @@ export default function BrowsePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  // Fetch pets from Supabase
-  useEffect(() => {
-    async function fetchPets() {
-      const supabase = createClient();
-
-      const { data, error: fetchError } = await supabase
-        .from('pets')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (fetchError) {
-        console.error('Error fetching pets:', fetchError);
-        setError(fetchError.message);
-      } else {
-        console.log('Fetched pets:', data?.length || 0);
-        setPets(data || []);
-      }
-      setIsLoading(false);
-    }
-
-    fetchPets();
-  }, []);
   const [lastSwipedPet, setLastSwipedPet] = useState(null);
   const [likedCount, setLikedCount] = useState(0);
   const [passedCount, setPassedCount] = useState(0);
+  const [userId, setUserId] = useState(null);
+  const [userPreferences, setUserPreferences] = useState(null);
+  const [userInteractions, setUserInteractions] = useState([]);
+  const [likeCounts, setLikeCounts] = useState(null);
+  const allPetsRef = useRef([]);
+
+  // Fetch pets, preferences, interactions, and popularity from Supabase
+  useEffect(() => {
+    async function fetchData() {
+      const supabase = createClient();
+
+      // 1. Get auth user
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        setError('Please log in to browse pets.');
+        setIsLoading(false);
+        return;
+      }
+      setUserId(authUser.id);
+
+      // 2. Fetch profile preferences, past interactions, all pets, and popularity in parallel
+      const [profileRes, interactionsRes, petsRes, popularityRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('activity_level, has_children, has_other_pets, preferred_pet_types')
+          .eq('id', authUser.id)
+          .single(),
+        supabase
+          .from('interactions')
+          .select('pet_id, type')
+          .eq('user_id', authUser.id),
+        supabase
+          .from('pets')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase.rpc('get_pet_like_counts'),
+      ]);
+
+      if (petsRes.error) {
+        console.error('Error fetching pets:', petsRes.error);
+        setError(petsRes.error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      // Build preferences (fall back to defaults if profile fetch fails)
+      const prefs = profileRes.data || {
+        activity_level: 'medium',
+        has_children: false,
+        has_other_pets: false,
+        preferred_pet_types: ['dog', 'cat'],
+      };
+      setUserPreferences(prefs);
+
+      // Build interactions list
+      const interactions = interactionsRes.data || [];
+      setUserInteractions(interactions);
+
+      // Build like-counts map { pet_id: count }
+      const countsMap = {};
+      if (popularityRes.data) {
+        for (const row of popularityRes.data) {
+          countsMap[row.pet_id] = Number(row.like_count);
+        }
+      }
+      setLikeCounts(countsMap);
+
+      // Store all pets for behavioral scoring
+      const allPets = petsRes.data || [];
+      allPetsRef.current = allPets;
+
+      // Filter out already-seen pets
+      const seenIds = new Set(interactions.map((i) => i.pet_id));
+      const unseenPets = allPets.filter((p) => !seenIds.has(p.id));
+
+      // Score and sort
+      const sorted = scoreAndSortPets(unseenPets, prefs, interactions, allPets, countsMap);
+      setPets(sorted);
+      setIsLoading(false);
+    }
+
+    fetchData();
+  }, []);
 
   const currentPet = pets[currentIndex];
 
   const handleSwipe = useCallback(
-    (direction) => {
-      if (!currentPet) return;
+    async (direction) => {
+      if (!currentPet || !userId) return;
+
+      const interactionType = direction === 'right' ? 'like' : 'skip';
 
       if (direction === 'right') {
         setLikedCount((prev) => prev + 1);
-        // TODO: Save to Supabase as favourite
       } else {
         setPassedCount((prev) => prev + 1);
-        // TODO: Save to Supabase as skip
       }
 
       setLastSwipedPet(currentPet);
       setCurrentIndex((prev) => prev + 1);
+
+      // Save to database (upsert handles the UNIQUE constraint)
+      const supabase = createClient();
+      await supabase.from('interactions').upsert(
+        { user_id: userId, pet_id: currentPet.id, type: interactionType },
+        { onConflict: 'user_id,pet_id' }
+      );
+
+      // Update local interactions list for behavioral scoring
+      setUserInteractions((prev) => [
+        ...prev,
+        { pet_id: currentPet.id, type: interactionType },
+      ]);
     },
-    [currentPet]
+    [currentPet, userId]
   );
 
-  const handleUndo = useCallback(() => {
+  const handleUndo = useCallback(async () => {
     if (currentIndex > 0 && lastSwipedPet) {
       setCurrentIndex((prev) => prev - 1);
       setLastSwipedPet(null);
       // Adjust counts
       if (likedCount > 0) setLikedCount((prev) => prev - 1);
       else if (passedCount > 0) setPassedCount((prev) => prev - 1);
+
+      // Delete the interaction from DB
+      if (userId) {
+        const supabase = createClient();
+        await supabase
+          .from('interactions')
+          .delete()
+          .eq('user_id', userId)
+          .eq('pet_id', lastSwipedPet.id);
+      }
+
+      // Remove from local interactions list
+      setUserInteractions((prev) =>
+        prev.filter((i) => i.pet_id !== lastSwipedPet.id)
+      );
     }
-  }, [currentIndex, lastSwipedPet, likedCount, passedCount]);
+  }, [currentIndex, lastSwipedPet, likedCount, passedCount, userId]);
 
   const handleViewDetails = useCallback(() => {
     if (currentPet) {
@@ -86,9 +166,28 @@ export default function BrowsePage() {
     }
   }, [currentPet, router]);
 
-  const matchReasons = currentPet
-    ? getMatchReasons(currentPet, userPreferences)
+  const handleStartOver = useCallback(() => {
+    // Re-score and show all pets (including previously seen ones)
+    if (userPreferences && allPetsRef.current.length > 0) {
+      const sorted = scoreAndSortPets(
+        allPetsRef.current,
+        userPreferences,
+        userInteractions,
+        allPetsRef.current,
+        likeCounts
+      );
+      setPets(sorted);
+      setCurrentIndex(0);
+    }
+  }, [userPreferences, userInteractions, likeCounts]);
+
+  const matchReasons = currentPet && userPreferences
+    ? getMatchReasons(currentPet, userPreferences, userInteractions, likeCounts)
     : [];
+
+  const matchPercent = currentPet
+    ? Math.round((currentPet._score / 150) * 100)
+    : 0;
 
   return (
     <main className="flex min-h-dvh flex-col pb-20">
@@ -136,6 +235,13 @@ export default function BrowsePage() {
                   {/* Gradient overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
+                  {/* Match percentage badge */}
+                  <div className="absolute left-4 top-4">
+                    <span className="rounded-full bg-orange-500 px-3 py-1 text-sm font-semibold text-white shadow">
+                      {matchPercent}% Match
+                    </span>
+                  </div>
+
                   {/* Info button */}
                   <button
                     onClick={handleViewDetails}
@@ -153,7 +259,7 @@ export default function BrowsePage() {
                       {capitalize(currentPet.size)}
                     </p>
                     <p className="mt-1 text-sm opacity-80">
-                      📍 {currentPet.city}, {currentPet.province}
+                      {currentPet.city}, {currentPet.province}
                     </p>
                   </div>
                 </div>
@@ -177,14 +283,14 @@ export default function BrowsePage() {
             <div className="text-center">
               {error ? (
                 <>
-                  <div className="mb-4 text-6xl">⚠️</div>
+                  <div className="mb-4 text-6xl">&#9888;&#65039;</div>
                   <h2 className="mb-2 text-xl font-bold">Error loading pets</h2>
                   <p className="mb-4 text-gray-600">{error}</p>
                   <Button onClick={() => window.location.reload()}>Try Again</Button>
                 </>
               ) : pets.length === 0 ? (
                 <>
-                  <div className="mb-4 text-6xl">🐾</div>
+                  <div className="mb-4 text-6xl">&#128062;</div>
                   <h2 className="mb-2 text-xl font-bold">No pets available</h2>
                   <p className="mb-4 text-gray-600">
                     There are no pets listed yet. Check back soon!
@@ -192,12 +298,12 @@ export default function BrowsePage() {
                 </>
               ) : (
                 <>
-                  <div className="mb-4 text-6xl">🎉</div>
+                  <div className="mb-4 text-6xl">&#127881;</div>
                   <h2 className="mb-2 text-xl font-bold">You&apos;ve seen all pets!</h2>
                   <p className="mb-4 text-gray-600">
                     Check back later for new arrivals.
                   </p>
-                  <Button onClick={() => setCurrentIndex(0)}>Start Over</Button>
+                  <Button onClick={handleStartOver}>Start Over</Button>
                 </>
               )}
             </div>
