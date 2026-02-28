@@ -1,59 +1,78 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, Trash2, MapPin } from 'lucide-react';
+import { Heart, Trash2, MapPin, Loader2 } from 'lucide-react';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { Button } from '@/components/ui/button';
 import { formatAge, capitalize } from '@/lib/utils';
-
-// Demo favorites (replace with real data from Supabase)
-const demoFavorites = [
-  {
-    id: '1',
-    shelter_id: 's1',
-    name: 'Buddy',
-    species: 'dog',
-    breed: 'Golden Retriever',
-    age_years: 2,
-    size: 'large',
-    sex: 'male',
-    energy_level: 'high',
-    good_with_kids: true,
-    good_with_pets: true,
-    description: 'Friendly and playful golden retriever.',
-    city: 'Vancouver',
-    province: 'BC',
-    photos: ['https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=600&fit=crop'],
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    shelter_id: 's2',
-    name: 'Max',
-    species: 'dog',
-    breed: 'Labrador Mix',
-    age_years: 3,
-    size: 'medium',
-    sex: 'male',
-    energy_level: 'medium',
-    good_with_kids: true,
-    good_with_pets: true,
-    description: 'Calm and well-trained lab mix.',
-    city: 'Burnaby',
-    province: 'BC',
-    photos: ['https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&h=600&fit=crop'],
-    updated_at: new Date().toISOString(),
-  },
-];
+import { createClient } from '@/lib/supabase/client';
 
 export default function FavoritesPage() {
-  const [favorites, setFavorites] = useState(demoFavorites);
+  const [favorites, setFavorites] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleRemove = (petId) => {
+  useEffect(() => {
+    async function fetchFavorites() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch liked/favourited interactions, most recent first
+      const { data: interactions } = await supabase
+        .from('interactions')
+        .select('pet_id')
+        .eq('user_id', user.id)
+        .in('type', ['like', 'favourite'])
+        .order('created_at', { ascending: false });
+
+      if (!interactions || interactions.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch the corresponding pets
+      const petIds = interactions.map((i) => i.pet_id);
+      const { data: pets } = await supabase
+        .from('pets')
+        .select('*')
+        .in('id', petIds);
+
+      if (pets) {
+        // Maintain the interaction order (most recently liked first)
+        const petMap = {};
+        for (const pet of pets) {
+          petMap[pet.id] = pet;
+        }
+        const ordered = petIds
+          .map((id) => petMap[id])
+          .filter(Boolean);
+        setFavorites(ordered);
+      }
+
+      setIsLoading(false);
+    }
+
+    fetchFavorites();
+  }, []);
+
+  const handleRemove = async (petId) => {
     setFavorites((prev) => prev.filter((p) => p.id !== petId));
-    // TODO: Remove from Supabase
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from('interactions')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('pet_id', petId);
+    }
   };
 
   return (
@@ -69,7 +88,12 @@ export default function FavoritesPage() {
 
       {/* Favorites List */}
       <div className="p-4">
-        {favorites.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-3 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+            <p className="text-gray-600">Loading favorites...</p>
+          </div>
+        ) : favorites.length === 0 ? (
           <div className="py-12 text-center">
             <Heart className="mx-auto mb-4 h-16 w-16 text-gray-300" />
             <h2 className="mb-2 text-lg font-semibold text-gray-700">
