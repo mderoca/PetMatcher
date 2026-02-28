@@ -21,6 +21,11 @@ const baseSchema = z.object({
     .regex(/[0-9]/, 'Password must contain at least one number'),
   confirmPassword: z.string(),
   role: z.enum(['adopter', 'shelter']),
+  // Adopter preference fields
+  preferredPetTypes: z.array(z.string()).default(['dog', 'cat']),
+  activityLevel: z.enum(['low', 'medium', 'high']).default('medium'),
+  hasChildren: z.boolean().default(false),
+  hasOtherPets: z.boolean().default(false),
   // Shelter-specific fields (optional, validated conditionally)
   shelterName: z.string().optional(),
   shelterPhone: z.string().optional(),
@@ -81,14 +86,35 @@ export default function RegisterPage() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       role: 'adopter',
       shelterProvince: 'BC',
+      preferredPetTypes: ['dog', 'cat'],
+      activityLevel: 'medium',
+      hasChildren: false,
+      hasOtherPets: false,
     },
   });
+
+  const preferredPetTypes = watch('preferredPetTypes');
+  const activityLevel = watch('activityLevel');
+  const hasChildren = watch('hasChildren');
+  const hasOtherPets = watch('hasOtherPets');
+
+  const togglePetType = (type) => {
+    const current = preferredPetTypes || [];
+    if (current.includes(type)) {
+      if (current.length > 1) {
+        setValue('preferredPetTypes', current.filter((t) => t !== type));
+      }
+    } else {
+      setValue('preferredPetTypes', [...current, type]);
+    }
+  };
 
   const handleRoleChange = (role) => {
     setSelectedRole(role);
@@ -138,7 +164,15 @@ export default function RegisterPage() {
       // Redirect shelter to dashboard
       router.push('/dashboard');
       router.refresh();
-    } else {
+    } else if (authData.user) {
+      // Save adopter preferences to profile
+      await supabase.from('profiles').update({
+        activity_level: data.activityLevel,
+        has_children: data.hasChildren,
+        has_other_pets: data.hasOtherPets,
+        preferred_pet_types: data.preferredPetTypes,
+      }).eq('id', authData.user.id);
+
       // Redirect adopter to browse
       router.push('/browse');
       router.refresh();
@@ -254,6 +288,109 @@ export default function RegisterPage() {
           Password must be at least 8 characters with one uppercase letter and one
           number.
         </p>
+
+        {/* Adopter preference fields */}
+        {selectedRole === 'adopter' && (
+          <div className="space-y-4 rounded-xl bg-gray-50 p-4">
+            <h3 className="font-medium text-gray-900">Pet Preferences</h3>
+
+            {/* Preferred pet types */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Preferred Pet Types
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {['dog', 'cat', 'rabbit', 'other'].map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => togglePetType(type)}
+                    className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
+                      preferredPetTypes?.includes(type)
+                        ? 'border-orange-500 bg-orange-100 text-orange-700'
+                        : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                    }`}
+                  >
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Activity level */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Activity Level
+              </label>
+              <div className="flex gap-2">
+                {['low', 'medium', 'high'].map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => setValue('activityLevel', level)}
+                    className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                      activityLevel === level
+                        ? 'border-orange-500 bg-orange-100 text-orange-700'
+                        : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                    }`}
+                  >
+                    {level.charAt(0).toUpperCase() + level.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Has children */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Do you have children?
+              </label>
+              <div className="flex gap-2">
+                {[{ label: 'Yes', value: true }, { label: 'No', value: false }].map(
+                  (opt) => (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      onClick={() => setValue('hasChildren', opt.value)}
+                      className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                        hasChildren === opt.value
+                          ? 'border-orange-500 bg-orange-100 text-orange-700'
+                          : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+
+            {/* Has other pets */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Do you have other pets?
+              </label>
+              <div className="flex gap-2">
+                {[{ label: 'Yes', value: true }, { label: 'No', value: false }].map(
+                  (opt) => (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      onClick={() => setValue('hasOtherPets', opt.value)}
+                      className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+                        hasOtherPets === opt.value
+                          ? 'border-orange-500 bg-orange-100 text-orange-700'
+                          : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Shelter-specific fields */}
         {selectedRole === 'shelter' && (
