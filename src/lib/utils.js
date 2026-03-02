@@ -97,7 +97,7 @@ export function calculateBehavioralBonus(pet, userInteractions, allPets) {
   }
 
   // Count likes per attribute value
-  const attrCounts = { species: {}, size: {}, energy_level: {} };
+  const attrCounts = { species: {}, energy_level: {} };
   let totalLikes = 0;
 
   for (const interaction of userInteractions) {
@@ -105,7 +105,7 @@ export function calculateBehavioralBonus(pet, userInteractions, allPets) {
     const likedPet = petMap[interaction.pet_id];
     if (!likedPet) continue;
     totalLikes++;
-    for (const attr of ['species', 'size', 'energy_level']) {
+    for (const attr of ['species', 'energy_level']) {
       const val = likedPet[attr];
       attrCounts[attr][val] = (attrCounts[attr][val] || 0) + 1;
     }
@@ -115,13 +115,13 @@ export function calculateBehavioralBonus(pet, userInteractions, allPets) {
 
   // Score this pet: for each attribute, add up to 10 points based on like-rate
   let bonus = 0;
-  for (const attr of ['species', 'size', 'energy_level']) {
+  for (const attr of ['species', 'energy_level']) {
     const val = pet[attr];
     const count = attrCounts[attr][val] || 0;
     bonus += (count / totalLikes) * 10;
   }
 
-  return Math.min(30, Math.round(bonus * 10) / 10);
+  return Math.min(20, Math.round(bonus * 10) / 10);
 }
 
 // Combine all scoring signals, attach _score metadata, sort descending

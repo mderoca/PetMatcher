@@ -174,7 +174,7 @@ export default function BrowsePage() {
     : [];
 
   const matchPercent = currentPet
-    ? Math.round((currentPet._score / 130) * 100)
+    ? Math.round((currentPet._score / 120) * 100)
     : 0;
 
   return (
