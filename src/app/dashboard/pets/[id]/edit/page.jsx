@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/client';
 const petSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   species: z.enum(['dog', 'cat', 'rabbit', 'other']),
+  customSpecies: z.string().optional(),
   breed: z.string().min(1, 'Breed is required'),
   age_years: z.coerce.number().min(0, 'Age must be 0 or greater').max(30, 'Age seems too high'),
   size: z.enum(['small', 'medium', 'large']),
@@ -38,10 +39,13 @@ export default function EditPetPage() {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(petSchema),
   });
+
+  const selectedSpecies = watch('species');
 
   useEffect(() => {
     async function loadPet() {
@@ -76,9 +80,11 @@ export default function EditPetPage() {
         return;
       }
 
+      const isStandardSpecies = ['dog', 'cat', 'rabbit'].includes(pet.species);
       reset({
         name: pet.name,
-        species: pet.species,
+        species: isStandardSpecies ? pet.species : 'other',
+        customSpecies: isStandardSpecies ? '' : pet.species,
         breed: pet.breed,
         age_years: pet.age_years,
         size: pet.size,
@@ -106,11 +112,15 @@ export default function EditPetPage() {
       return;
     }
 
+    const species = data.species === 'other' && data.customSpecies
+      ? data.customSpecies.toLowerCase()
+      : data.species;
+
     const { error: updateError } = await supabase
       .from('pets')
       .update({
         name: data.name,
-        species: data.species,
+        species,
         breed: data.breed,
         age_years: data.age_years,
         size: data.size,
@@ -193,6 +203,15 @@ export default function EditPetPage() {
                 error={errors.breed?.message}
               />
             </div>
+
+            {selectedSpecies === 'other' && (
+              <Input
+                {...register('customSpecies')}
+                label="Specify Species"
+                placeholder="e.g., Hamster, Parrot, Turtle"
+                error={errors.customSpecies?.message}
+              />
+            )}
 
             <div className="grid grid-cols-3 gap-4">
               <Input
