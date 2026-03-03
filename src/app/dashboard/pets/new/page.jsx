@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/client';
 const petSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   species: z.enum(['dog', 'cat', 'rabbit', 'other']),
+  customSpecies: z.string().optional(),
   breed: z.string().min(1, 'Breed is required'),
   age_years: z.coerce.number().min(0, 'Age must be 0 or greater').max(30, 'Age seems too high'),
   size: z.enum(['small', 'medium', 'large']),
@@ -36,6 +37,7 @@ export default function AddPetPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(petSchema),
@@ -49,6 +51,8 @@ export default function AddPetPage() {
       province: 'BC',
     },
   });
+
+  const selectedSpecies = watch('species');
 
   useEffect(() => {
     async function getShelter() {
@@ -83,10 +87,14 @@ export default function AddPetPage() {
     setError(null);
     const supabase = createClient();
 
+    const species = data.species === 'other' && data.customSpecies
+      ? data.customSpecies.toLowerCase()
+      : data.species;
+
     const { error: insertError } = await supabase.from('pets').insert({
       shelter_id: shelterId,
       name: data.name,
-      species: data.species,
+      species,
       breed: data.breed,
       age_years: data.age_years,
       size: data.size,
@@ -160,6 +168,15 @@ export default function AddPetPage() {
                 error={errors.breed?.message}
               />
             </div>
+
+            {selectedSpecies === 'other' && (
+              <Input
+                {...register('customSpecies')}
+                label="Specify Species"
+                placeholder="e.g., Hamster, Parrot, Turtle"
+                error={errors.customSpecies?.message}
+              />
+            )}
 
             <div className="grid grid-cols-3 gap-4">
               <Input
