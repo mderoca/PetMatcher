@@ -147,10 +147,6 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Version */}
-      <p className="mt-6 text-center text-xs text-gray-400">
-        PetMatcher v1.0.0
-      </p>
 
       <BottomNav />
     </main>

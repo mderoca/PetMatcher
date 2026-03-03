@@ -64,10 +64,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-4 text-center text-xs text-gray-400">
-        <p>© 2025 PetMatcher. Made with ❤️ for pets.</p>
-      </footer>
+
     </main>
   );
 }
