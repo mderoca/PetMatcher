@@ -18,6 +18,7 @@ const petSchema = z.object({
   customSpecies: z.string().optional(),
   breed: z.string().min(1, 'Breed is required'),
   age_years: z.coerce.number().min(0, 'Age must be 0 or greater').max(30, 'Age seems too high'),
+  adoption_fee: z.coerce.number().min(0, 'Fee must be 0 or greater').optional().or(z.literal('')),
   size: z.enum(['small', 'medium', 'large']),
   sex: z.enum(['male', 'female']),
   energy_level: z.enum(['low', 'medium', 'high']),
@@ -95,6 +96,7 @@ export default function EditPetPage() {
         description: pet.description,
         city: pet.city,
         province: pet.province,
+        adoption_fee: pet.adoption_fee ?? '',
       });
       setPhotos(pet.photos || []);
       setIsLoading(false);
@@ -123,6 +125,7 @@ export default function EditPetPage() {
         species,
         breed: data.breed,
         age_years: data.age_years,
+        adoption_fee: data.adoption_fee !== '' && data.adoption_fee != null ? data.adoption_fee : null,
         size: data.size,
         sex: data.sex,
         energy_level: data.energy_level,
@@ -213,7 +216,7 @@ export default function EditPetPage() {
               />
             )}
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <Input
                 {...register('age_years')}
                 type="number"
@@ -222,6 +225,17 @@ export default function EditPetPage() {
                 placeholder="e.g., 2"
                 error={errors.age_years?.message}
               />
+              <Input
+                {...register('adoption_fee')}
+                type="number"
+                step="0.01"
+                label="Adoption Fee ($)"
+                placeholder="e.g., 150"
+                error={errors.adoption_fee?.message}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>

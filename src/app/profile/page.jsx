@@ -98,7 +98,8 @@ export default function ProfilePage() {
       </header>
 
       {/* Stats */}
-      <div className="-mt-4 mx-4 grid grid-cols-2 gap-3 rounded-xl bg-white p-4 shadow-md">
+      <div className="-mt-4 mx-auto max-w-2xl px-4">
+      <div className="grid grid-cols-2 gap-3 rounded-xl bg-white p-4 shadow-md">
         <div className="text-center">
           <p className="text-2xl font-bold text-orange-500">{stats.viewed}</p>
           <p className="text-xs text-gray-500">Pets Viewed</p>
@@ -108,9 +109,10 @@ export default function ProfilePage() {
           <p className="text-xs text-gray-500">Favorites</p>
         </div>
       </div>
+      </div>
 
       {/* Menu Items */}
-      <div className="mt-6 px-4">
+      <div className="mx-auto max-w-2xl mt-6 px-4">
         <div className="overflow-hidden rounded-xl bg-white shadow-md">
           {menuItems.map((item, index) => (
             <button
@@ -135,7 +137,7 @@ export default function ProfilePage() {
 
       {/* Logout Button */}
       {user && (
-        <div className="mt-6 px-4">
+        <div className="mx-auto max-w-2xl mt-6 px-4">
           <Button
             variant="outline"
             className="w-full border-red-200 text-red-500 hover:bg-red-50"

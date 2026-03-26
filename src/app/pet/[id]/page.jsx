@@ -16,6 +16,8 @@ import {
   Phone,
   ExternalLink,
   Loader2,
+  DollarSign,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatAge, capitalize } from '@/lib/utils';
@@ -27,6 +29,7 @@ export default function PetDetailPage({ params }) {
   const [pet, setPet] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activePhoto, setActivePhoto] = useState(0);
+  const [messagingLoading, setMessagingLoading] = useState(false);
 
   useEffect(() => {
     async function loadPet() {
@@ -46,6 +49,49 @@ export default function PetDetailPage({ params }) {
 
     loadPet();
   }, [id]);
+
+  const handleMessageShelter = async () => {
+    if (!pet?.shelter) return;
+    setMessagingLoading(true);
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      router.push(`/login?redirect=/pet/${id}`);
+      return;
+    }
+
+    // Check if conversation already exists
+    const { data: existing } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('adopter_id', user.id)
+      .eq('shelter_id', pet.shelter.id)
+      .eq('pet_id', pet.id)
+      .single();
+
+    if (existing) {
+      router.push(`/messages/${existing.id}`);
+      return;
+    }
+
+    // Create new conversation
+    const { data: newConvo, error } = await supabase
+      .from('conversations')
+      .insert({
+        adopter_id: user.id,
+        shelter_id: pet.shelter.id,
+        pet_id: pet.id,
+      })
+      .select('id')
+      .single();
+
+    if (!error && newConvo) {
+      router.push(`/messages/${newConvo.id}`);
+    }
+    setMessagingLoading(false);
+  };
 
   if (isLoading) {
     return (
@@ -131,7 +177,7 @@ export default function PetDetailPage({ params }) {
       </div>
 
       {/* Pet Info */}
-      <div className="px-4 py-6">
+      <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{pet.name}</h1>
@@ -142,12 +188,20 @@ export default function PetDetailPage({ params }) {
           </span>
         </div>
 
-        {/* Location */}
-        <div className="mb-4 flex items-center text-gray-600">
-          <MapPin className="mr-2 h-4 w-4" />
-          <span>
-            {pet.city}, {pet.province}
-          </span>
+        {/* Location & Fee */}
+        <div className="mb-4 flex flex-wrap items-center gap-4 text-gray-600">
+          <div className="flex items-center">
+            <MapPin className="mr-2 h-4 w-4" />
+            <span>
+              {pet.city}, {pet.province}
+            </span>
+          </div>
+          {pet.adoption_fee != null && (
+            <div className="flex items-center">
+              <DollarSign className="mr-1 h-4 w-4" />
+              <span className="font-semibold text-gray-900">${Number(pet.adoption_fee).toFixed(2)}</span>
+            </div>
+          )}
         </div>
 
         {/* Quick Info Grid */}
@@ -215,43 +269,71 @@ export default function PetDetailPage({ params }) {
           <p className="leading-relaxed text-gray-600">{pet.description}</p>
         </div>
 
-        {/* Shelter Info */}
+        {/* Shelter Info + Map */}
         {pet.shelter && (
-          <div className="rounded-xl bg-gray-50 p-4">
-            <h2 className="mb-3 font-semibold text-gray-900">Shelter Information</h2>
-            <p className="mb-2 font-medium">{pet.shelter.name}</p>
-            <p className="mb-1 text-sm text-gray-600">
-              {pet.shelter.address}, {pet.shelter.city}, {pet.shelter.province}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <a
-                href={`mailto:${pet.shelter.email}`}
-                className="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm text-gray-700 shadow-sm"
-              >
-                <Mail className="h-4 w-4" />
-                Email
-              </a>
-              {pet.shelter.phone && (
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Shelter details */}
+            <div className="flex-1 rounded-xl bg-gray-50 p-4">
+              <h2 className="mb-3 font-semibold text-gray-900">Shelter Information</h2>
+              <p className="mb-2 font-medium">{pet.shelter.name}</p>
+              <p className="mb-1 text-sm text-gray-600">
+                {pet.shelter.address}, {pet.shelter.city}, {pet.shelter.province}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={handleMessageShelter}
+                  disabled={messagingLoading}
+                  className="flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-sm font-medium text-white shadow-sm transition hover:bg-orange-600 disabled:opacity-50"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  {messagingLoading ? 'Opening...' : 'Message'}
+                </button>
                 <a
-                  href={`tel:${pet.shelter.phone}`}
+                  href={`mailto:${pet.shelter.email}`}
                   className="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm text-gray-700 shadow-sm"
                 >
-                  <Phone className="h-4 w-4" />
-                  Call
+                  <Mail className="h-4 w-4" />
+                  Email
                 </a>
-              )}
-              {pet.shelter.website_url && (
-                <a
-                  href={pet.shelter.website_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm text-gray-700 shadow-sm"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Website
-                </a>
-              )}
+                {pet.shelter.phone && (
+                  <a
+                    href={`tel:${pet.shelter.phone}`}
+                    className="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm text-gray-700 shadow-sm"
+                  >
+                    <Phone className="h-4 w-4" />
+                    Call
+                  </a>
+                )}
+                {pet.shelter.website_url && (
+                  <a
+                    href={pet.shelter.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm text-gray-700 shadow-sm"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Website
+                  </a>
+                )}
+              </div>
             </div>
+
+            {/* Google Maps */}
+            {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
+              <div className="sm:flex-1 overflow-hidden rounded-xl">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0, minHeight: '220px' }}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(
+                    `${pet.shelter.address}, ${pet.shelter.city}, ${pet.shelter.province}`
+                  )}`}
+                  allowFullScreen
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -12,6 +12,8 @@ export default function PreferencesPage() {
   const [activityLevel, setActivityLevel] = useState('medium');
   const [hasChildren, setHasChildren] = useState(false);
   const [hasOtherPets, setHasOtherPets] = useState(false);
+  const [preferredProvince, setPreferredProvince] = useState('');
+  const [maxAdoptionFee, setMaxAdoptionFee] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
@@ -23,7 +25,7 @@ export default function PreferencesPage() {
       if (user) {
         const { data } = await supabase
           .from('profiles')
-          .select('activity_level, has_children, has_other_pets, preferred_pet_types')
+          .select('activity_level, has_children, has_other_pets, preferred_pet_types, preferred_province, max_adoption_fee')
           .eq('id', user.id)
           .single();
 
@@ -32,6 +34,8 @@ export default function PreferencesPage() {
           setActivityLevel(data.activity_level || 'medium');
           setHasChildren(data.has_children ?? false);
           setHasOtherPets(data.has_other_pets ?? false);
+          setPreferredProvince(data.preferred_province || '');
+          setMaxAdoptionFee(data.max_adoption_fee != null ? String(data.max_adoption_fee) : '');
         }
       }
       setLoading(false);
@@ -64,6 +68,8 @@ export default function PreferencesPage() {
         activity_level: activityLevel,
         has_children: hasChildren,
         has_other_pets: hasOtherPets,
+        preferred_province: preferredProvince || null,
+        max_adoption_fee: maxAdoptionFee !== '' ? Number(maxAdoptionFee) : null,
       })
       .eq('id', user.id);
 
@@ -202,6 +208,39 @@ export default function PreferencesPage() {
                 )
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Location & Fee Filters */}
+        <div className="space-y-4 rounded-xl bg-gray-50 p-4">
+          <h3 className="text-sm font-semibold text-gray-700">Location & Budget</h3>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">
+              Preferred Province
+            </label>
+            <input
+              type="text"
+              value={preferredProvince}
+              onChange={(e) => setPreferredProvince(e.target.value)}
+              placeholder="e.g., BC (leave blank for all)"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">
+              Max Adoption Fee ($)
+            </label>
+            <input
+              type="number"
+              value={maxAdoptionFee}
+              onChange={(e) => setMaxAdoptionFee(e.target.value)}
+              placeholder="No limit"
+              min="0"
+              step="10"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
+            />
           </div>
         </div>
 

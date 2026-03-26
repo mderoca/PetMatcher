@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PawPrint, Plus, Building2, User } from 'lucide-react';
+import { PawPrint, Plus, Building2, User, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 
@@ -129,14 +129,23 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick Action */}
-        <Link href="/dashboard/pets" className="block">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:border-orange-200 transition">
-            <PawPrint className="h-8 w-8 text-orange-500 mb-3" />
-            <h3 className="font-semibold text-gray-900">Manage Pets</h3>
-            <p className="text-sm text-gray-600 mt-1">View and edit your pet listings</p>
-          </div>
-        </Link>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 gap-4">
+          <Link href="/dashboard/pets" className="block">
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:border-orange-200 transition">
+              <PawPrint className="h-8 w-8 text-orange-500 mb-3" />
+              <h3 className="font-semibold text-gray-900">Manage Pets</h3>
+              <p className="text-sm text-gray-600 mt-1">View and edit your pet listings</p>
+            </div>
+          </Link>
+          <Link href="/dashboard/messages" className="block">
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:border-orange-200 transition">
+              <MessageSquare className="h-8 w-8 text-orange-500 mb-3" />
+              <h3 className="font-semibold text-gray-900">Messages</h3>
+              <p className="text-sm text-gray-600 mt-1">Chat with potential adopters</p>
+            </div>
+          </Link>
+        </div>
 
         {/* Recent Pets */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">

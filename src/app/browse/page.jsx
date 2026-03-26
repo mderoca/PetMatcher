@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Heart, RotateCcw, Info, Loader2 } from 'lucide-react';
+import { X, Heart, RotateCcw, Info, Loader2, SlidersHorizontal, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { formatAge, capitalize, getMatchReasons, scoreAndSortPets } from '@/lib/utils';
@@ -22,6 +22,12 @@ export default function BrowsePage() {
   const [userPreferences, setUserPreferences] = useState(null);
   const [userInteractions, setUserInteractions] = useState([]);
   const allPetsRef = useRef([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterProvince, setFilterProvince] = useState('');
+  const [filterCity, setFilterCity] = useState('');
+  const [filterMaxFee, setFilterMaxFee] = useState('');
+  const [availableProvinces, setAvailableProvinces] = useState([]);
+  const [availableCities, setAvailableCities] = useState([]);
 
   // Fetch pets, preferences, and interactions from Supabase
   useEffect(() => {
@@ -41,7 +47,7 @@ export default function BrowsePage() {
       const [profileRes, interactionsRes, petsRes] = await Promise.all([
         supabase
           .from('profiles')
-          .select('activity_level, has_children, has_other_pets, preferred_pet_types')
+          .select('activity_level, has_children, has_other_pets, preferred_pet_types, preferred_province, max_adoption_fee')
           .eq('id', authUser.id)
           .single(),
         supabase
@@ -78,9 +84,22 @@ export default function BrowsePage() {
       const allPets = petsRes.data || [];
       allPetsRef.current = allPets;
 
+      // Build available provinces and cities for filter dropdowns
+      const provinces = [...new Set(allPets.map((p) => p.province).filter(Boolean))].sort();
+      setAvailableProvinces(provinces);
+      const cities = [...new Set(allPets.map((p) => p.city).filter(Boolean))].sort();
+      setAvailableCities(cities);
+
+      // Load saved filter preferences
+      if (prefs.preferred_province) setFilterProvince(prefs.preferred_province);
+      if (prefs.max_adoption_fee != null) setFilterMaxFee(String(prefs.max_adoption_fee));
+
       // Filter out already-seen pets
       const seenIds = new Set(interactions.map((i) => i.pet_id));
-      const unseenPets = allPets.filter((p) => !seenIds.has(p.id));
+      let unseenPets = allPets.filter((p) => !seenIds.has(p.id));
+
+      // Apply location/fee filters
+      unseenPets = applyFilters(unseenPets, prefs.preferred_province || '', '', prefs.max_adoption_fee != null ? String(prefs.max_adoption_fee) : '');
 
       // Score and sort
       const sorted = scoreAndSortPets(unseenPets, prefs, interactions, allPets);
@@ -158,8 +177,9 @@ export default function BrowsePage() {
   const handleStartOver = useCallback(() => {
     // Re-score and show all pets (including previously seen ones)
     if (userPreferences && allPetsRef.current.length > 0) {
+      let filtered = applyFilters(allPetsRef.current, filterProvince, filterCity, filterMaxFee);
       const sorted = scoreAndSortPets(
-        allPetsRef.current,
+        filtered,
         userPreferences,
         userInteractions,
         allPetsRef.current
@@ -167,7 +187,70 @@ export default function BrowsePage() {
       setPets(sorted);
       setCurrentIndex(0);
     }
-  }, [userPreferences, userInteractions]);
+  }, [userPreferences, userInteractions, filterProvince, filterCity, filterMaxFee]);
+
+  // Filter helper
+  function applyFilters(petsList, province, city, maxFee) {
+    let result = petsList;
+    if (province) result = result.filter((p) => p.province === province);
+    if (city) result = result.filter((p) => p.city.toLowerCase().includes(city.toLowerCase()));
+    if (maxFee !== '' && !isNaN(Number(maxFee))) {
+      const max = Number(maxFee);
+      result = result.filter((p) => p.adoption_fee == null || Number(p.adoption_fee) <= max);
+    }
+    return result;
+  }
+
+  const handleApplyFilters = useCallback(() => {
+    if (!userPreferences || allPetsRef.current.length === 0) return;
+
+    const allPets = allPetsRef.current;
+    const seenIds = new Set(userInteractions.map((i) => i.pet_id));
+    let unseenPets = allPets.filter((p) => !seenIds.has(p.id));
+    unseenPets = applyFilters(unseenPets, filterProvince, filterCity, filterMaxFee);
+
+    const sorted = scoreAndSortPets(unseenPets, userPreferences, userInteractions, allPets);
+    setPets(sorted);
+    setCurrentIndex(0);
+    setShowFilters(false);
+
+    // Save filter preferences to profile
+    const saveFilters = async () => {
+      if (!userId) return;
+      const supabase = createClient();
+      await supabase.from('profiles').update({
+        preferred_province: filterProvince || null,
+        max_adoption_fee: filterMaxFee !== '' ? Number(filterMaxFee) : null,
+      }).eq('id', userId);
+    };
+    saveFilters();
+  }, [userPreferences, userInteractions, filterProvince, filterCity, filterMaxFee, userId]);
+
+  const handleClearFilters = useCallback(() => {
+    setFilterProvince('');
+    setFilterCity('');
+    setFilterMaxFee('');
+    if (!userPreferences || allPetsRef.current.length === 0) return;
+
+    const allPets = allPetsRef.current;
+    const seenIds = new Set(userInteractions.map((i) => i.pet_id));
+    const unseenPets = allPets.filter((p) => !seenIds.has(p.id));
+    const sorted = scoreAndSortPets(unseenPets, userPreferences, userInteractions, allPets);
+    setPets(sorted);
+    setCurrentIndex(0);
+    setShowFilters(false);
+
+    // Clear saved filters
+    if (userId) {
+      const supabase = createClient();
+      supabase.from('profiles').update({
+        preferred_province: null,
+        max_adoption_fee: null,
+      }).eq('id', userId);
+    }
+  }, [userPreferences, userInteractions, userId]);
+
+  const hasActiveFilters = filterProvince || filterCity || filterMaxFee;
 
   const matchReasons = currentPet && userPreferences
     ? getMatchReasons(currentPet, userPreferences, userInteractions)
@@ -195,6 +278,83 @@ export default function BrowsePage() {
           </span>
         </div>
       </header>
+
+      {/* Filter Bar */}
+      <div className="border-b border-gray-200 bg-white px-4">
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex w-full items-center justify-between py-2 text-sm text-gray-600"
+        >
+          <span className="flex items-center gap-2">
+            <SlidersHorizontal className="h-4 w-4" />
+            Filters
+            {hasActiveFilters && (
+              <span className="rounded-full bg-orange-500 px-2 py-0.5 text-xs text-white">
+                Active
+              </span>
+            )}
+          </span>
+          <ChevronUp className={`h-4 w-4 transition ${showFilters ? '' : 'rotate-180'}`} />
+        </button>
+
+        {showFilters && (
+          <div className="space-y-3 pb-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">Province</label>
+                <select
+                  value={filterProvince}
+                  onChange={(e) => setFilterProvince(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
+                >
+                  <option value="">All Provinces</option>
+                  {availableProvinces.map((prov) => (
+                    <option key={prov} value={prov}>{prov}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">City</label>
+                <input
+                  type="text"
+                  value={filterCity}
+                  onChange={(e) => setFilterCity(e.target.value)}
+                  placeholder="Any city"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-500">Max Adoption Fee ($)</label>
+              <input
+                type="number"
+                value={filterMaxFee}
+                onChange={(e) => setFilterMaxFee(e.target.value)}
+                placeholder="No limit"
+                min="0"
+                step="10"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleApplyFilters}
+                className="flex-1 rounded-lg bg-orange-500 py-2 text-sm font-medium text-white transition hover:bg-orange-600"
+              >
+                Apply Filters
+              </button>
+              {hasActiveFilters && (
+                <button
+                  onClick={handleClearFilters}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Swipe Area */}
       <div className="relative flex flex-1 items-center justify-center px-4">
@@ -248,6 +408,9 @@ export default function BrowsePage() {
                     </p>
                     <p className="mt-1 text-sm opacity-80">
                       {currentPet.city}, {currentPet.province}
+                      {currentPet.adoption_fee != null && (
+                        <span className="ml-2 font-semibold">${Number(currentPet.adoption_fee).toFixed(0)}</span>
+                      )}
                     </p>
                   </div>
                 </div>
